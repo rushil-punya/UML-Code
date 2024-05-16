@@ -1,56 +1,58 @@
 import React, { useState } from 'react';
 
 function App() {
-  const [imageURL, setImageURL] = useState('');
+  const [imageFile, setImageFile] = useState(null);
   const [zipUrl, setZipUrl] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // Indicate the loading process starts
-    // No need to clear zipUrl here as it will be cleared upon error or successfully setting a new zipUrl
-    
+    setIsLoading(true);
+
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
     try {
       const response = await fetch('http://localhost:5000/generate-code', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ image_url: imageURL }),
+        body: formData,
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
-        setZipUrl(''); // Explicitly clear zipUrl upon detecting an error
-        setError(errorData.error); // Set the error
+        setZipUrl('');
+        setError(errorData.error);
       } else {
         const data = await response.json();
-        setError(''); // Clear any previous error state
-        setZipUrl(data.zip_url); // Update with new zip URL only on successful response
+        setError('');
+        setZipUrl(data.zip_url);
       }
     } catch (error) {
-      setZipUrl(''); // Ensure zipUrl is cleared if fetch fails
-      setError("An unexpected error occurred"); // Handle fetch error
+      setZipUrl('');
+      setError('An unexpected error occurred');
     } finally {
-      setIsLoading(false); // Loading is complete, this will happen regardless of the request outcome
+      setIsLoading(false);
     }
   };
-  
 
   return (
     <div>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="imageURL">
-          UML Diagram URL:
+        <label htmlFor="imageFile">
+          Upload UML Diagram:
         </label>
         <input
-          id="imageURL"
-          type="text"
-          value={imageURL}
-          onChange={(e) => setImageURL(e.target.value)}
+          id="imageFile"
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
         />
-        <button type="submit" disabled={isLoading}>Generate Java Code</button>
+        <button type="submit" disabled={isLoading || !imageFile}>Generate Java Code</button>
       </form>
       {isLoading && (
         <div className="loader-container">

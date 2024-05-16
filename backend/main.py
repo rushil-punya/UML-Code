@@ -1,6 +1,8 @@
+import base64
 from flask import Flask, request, jsonify, send_from_directory
 import os
 import re
+from werkzeug.utils import secure_filename
 from openai import OpenAI
 import zipfile
 import tempfile
@@ -10,9 +12,24 @@ client = OpenAI()
 app = Flask(__name__, static_folder='downloads')
 CORS(app)
 
+
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
 @app.route('/generate-code', methods=['POST'])
 def generate_code():
-  image_url = request.json.get('image_url')
+  if 'image' not in request.files:
+    return jsonify({"error": "No file part"}), 400
+  file = request.files['image']
+  if file.filename == '':
+    return jsonify({"error": "No selected file"}), 400
+  if file:
+    # Ensure filename is safe
+    filename = secure_filename(file.filename)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file_path = os.path.join(tmpdirname, filename)
+        file.save(file_path)
+        encoded_image = encode_image(file_path)
   try:
         response = client.chat.completions.create(
             model="gpt-4-vision-preview",
@@ -24,7 +41,7 @@ def generate_code():
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": image_url,
+                                "url": f"data:image/jpeg;base64,{encoded_image}"
                             },
                         },
                     ],
